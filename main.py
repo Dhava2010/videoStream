@@ -3,46 +3,39 @@ import socket
 import pickle
 import struct
 
-# Initialize the camera
-camera = cv2.VideoCapture(0) # 0 for the first camera, adjust if needed
-if not camera.isOpened():
-    print("Error: Could not open camera.")
-    exit()
-
-# Create a socket for streaming
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host_name = socket.gethostname()
-host_ip = socket.gethostbyname(host_name) # Or use your Pi's static IP
+    # Connect to the Raspberry Pi
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+host_ip = '192.168.240.16' # Replace with your Pi's IP address
 port = 9999
-socket_address = (host_ip, port)
+client_socket.connect((host_ip, port))
 
-server_socket.bind(socket_address)
-server_socket.listen(5)
-print(f"Listening at {socket_address}")
-
-client_socket, addr = server_socket.accept()
-print(f"Got connection from {addr}")
+data = b""
+payload_size = struct.calcsize("L")
 
 while True:
-    ret, frame = camera.read()
-    if not ret:
+    while len(data) < payload_size:
+        packet = client_socket.recv(4096) # Adjust buffer size as needed
+        if not packet:
+            break
+        data += packet
+
+    if not packet:
         break
 
-    # Serialize frame
-    data = pickle.dumps(frame)
+    packed_msg_size = data[:payload_size]
+    data = data[payload_size:]
+    msg_size = struct.unpack("L", packed_msg_size)[0]
 
-    # Send message size
-    message_size = struct.pack("L", len(data))
+    while len(data) < msg_size:
+        data += client_socket.recv(4096) # Adjust buffer size as needed
 
-    # Send frame data
-    client_socket.sendall(message_size + data)
+    frame_data = data[:msg_size]
+    data = data[msg_size:]
+    frame = pickle.loads(frame_data)
 
-    # Optional: Display frame on Pi (for testing)
-    # cv2.imshow('Raspberry Pi Stream', frame)
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
+    cv2.imshow('Received Stream', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-camera.release()
 client_socket.close()
-server_socket.close()
 cv2.destroyAllWindows()

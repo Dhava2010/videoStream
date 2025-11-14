@@ -3,9 +3,8 @@ import socket
 import pickle
 import struct
 
-    # Connect to the Raspberry Pi
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host_ip = '192.168.240.16' # Replace with your Pi's IP address
+host_ip = '192.168.240.16' 
 port = 9999
 client_socket.connect((host_ip, port))
 
@@ -14,7 +13,7 @@ payload_size = struct.calcsize("L")
 
 while True:
     while len(data) < payload_size:
-        packet = client_socket.recv(4096) # Adjust buffer size as needed
+        packet = client_socket.recv(4096) 
         if not packet:
             break
         data += packet
@@ -27,7 +26,7 @@ while True:
     msg_size = struct.unpack("L", packed_msg_size)[0]
 
     while len(data) < msg_size:
-        data += client_socket.recv(4096) # Adjust buffer size as needed
+        data += client_socket.recv(4096) 
 
     frame_data = data[:msg_size]
     data = data[msg_size:]
